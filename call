@@ -1,0 +1,46 @@
+$mh = curl_multi_init();  // Initialize multi cURL handle
+
+// Array of URLs to send requests to
+$urls = [
+    "https://example.com/api/change_state1",
+    "https://example.com/api/change_state2",
+    "https://example.com/api/change_state3"
+];
+
+// Array to hold individual cURL handles
+$curlHandles = [];
+
+// Initialize individual cURL handles for each URL and set options
+foreach ($urls as $url) {
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);  // Disable SSL verification (use with caution)
+    
+    curl_multi_add_handle($mh, $ch);  // Add each handle to multi cURL
+    $curlHandles[] = $ch;  // Store handles for later use
+}
+
+// Execute multi handle
+$running = null;
+do {
+    curl_multi_exec($mh, $running);
+} while ($running > 0);
+
+// Retrieve and handle responses
+while ($info = curl_multi_info_read($mh)) {
+    $ch = $info['handle'];  // Get the handle associated with the info
+
+    if ($info['result'] !== CURLE_OK) {
+        echo 'Error: ' . curl_error($ch) . PHP_EOL;
+    } else {
+        $response = curl_multi_getcontent($ch);  // Get the response
+        echo "Response from " . curl_getinfo($ch, CURLINFO_EFFECTIVE_URL) . ": " . $response . PHP_EOL;
+    }
+
+    // Remove the handle and close it
+    curl_multi_remove_handle($mh, $ch);
+    curl_close($ch);
+}
+
+// Close the multi handle
+curl_multi_close($mh);
